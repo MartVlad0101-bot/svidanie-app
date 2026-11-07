@@ -1,12 +1,5 @@
-import dns from 'node:dns';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-
-// Отключаем кеширование Next.js для этого API
-export const dynamic = 'force-dynamic';
-
-dns.setDefaultResultOrder('ipv4first');
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 const supabaseUrl = 'https://unaxyjdtrswwllazbhh.supabase.co';
 const supabaseKey = 'sb_publishable_oNMrdmRcgcSSa2OEChqdEQ_M8FoCB19'; 
@@ -33,7 +26,7 @@ export async function POST(req: Request) {
     if (error) throw error;
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error("ОШИБКА SUPABASE (POST):", error.message);
+    console.error("ОШИБКА СУПАБЕЙС (POST):", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -44,7 +37,6 @@ export async function GET(req: Request) {
 
   try {
     if (slug) {
-      // ИСПОЛЬЗУЕМ maybeSingle() вместо single() — это безопаснее
       const { data, error } = await supabase
         .from('invitations')
         .select('*')
@@ -52,7 +44,7 @@ export async function GET(req: Request) {
         .maybeSingle();
         
       if (error) throw error;
-      if (!data) throw new Error('Not found');
+      if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 });
       
       return NextResponse.json({
         slug: data.slug,
@@ -80,7 +72,7 @@ export async function GET(req: Request) {
       return NextResponse.json(formattedData);
     }
   } catch (error: any) {
-    console.error("ОШИБКА SUPABASE (GET):", error.message);
+    console.error("ОШИБКА СУПАБЕЙС (GET):", error.message);
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 }
