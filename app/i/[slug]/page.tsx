@@ -15,7 +15,7 @@ function InvitationContent() {
   const [noCount, setNoCount] = useState(0);
 
   useEffect(() => {
-    fetch(`/api/invite?slug=${slug}`)
+        fetch(`/api/invite?slug=${slug}`, { cache: 'no-store' })
       .then(res => res.json())
       .then(resData => {
         if (resData.error) {
