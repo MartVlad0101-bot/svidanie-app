@@ -1,9 +1,17 @@
+import dns from 'node:dns';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+// ПРИНУДИТЕЛЬНО ВКЛЮЧАЕМ IPv4 (чтобы обойти сетевые ограничения)
+dns.setDefaultResultOrder('ipv4first');
+
+// ОТКЛЮЧАЕМ СТРОГУЮ ПРОВЕРКУ SSL (чтобы сервер ONREZA мог достучаться до Supabase)
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
 // Ваши данные из Supabase
 const supabaseUrl = 'https://unaxyjdtrswwllazbhh.supabase.co';
-const supabaseKey = 'sb_publishable_oNMrdmRcgcSSa2OEChqdEQ_M8FoCB19'; // Замените на скопированный ключ
+// Вставьте ваш ключ (в самом конце должна быть кавычка)
+const supabaseKey = 'sb_publishable_oNMrdmRcgcSSa2OEChqdEQ_M8FoCB19'; 
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -28,6 +36,7 @@ export async function POST(req: Request) {
     if (error) throw error;
     return NextResponse.json({ success: true });
   } catch (error: any) {
+    console.error("ОШИБКА SUPABASE (POST):", error.message); // Выведет ошибку в логи ONREZA
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -77,6 +86,7 @@ export async function GET(req: Request) {
       return NextResponse.json(formattedData);
     }
   } catch (error: any) {
+    console.error("ОШИБКА SUPABASE (GET):", error.message);
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 }
