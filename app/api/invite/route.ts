@@ -1,78 +1,32 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = 'https://unaxyjdtrswwllazbhh.supabase.co';
-const supabaseKey = 'sb_publishable_oNMrdmRcgcSSa2OEChqdEQ_M8FoCB19'; 
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { createInvite, getInvite } from '@/lib/invites';
+import { parseCreateInvite, SLUG_RE } from '@/lib/validate';
 
 export async function POST(req: Request) {
-  try {
-    const body = await req.json();
-    
-    const { error } = await supabase
-      .from('invitations')
-      .upsert(
-        { 
-          slug: body.slug, 
-          recipient_name: body.recipientName, 
-          question: body.question, 
-          message: body.message,
-          answer: body.answer || null
-        },
-        { onConflict: 'slug' }
-      );
+  let body: unknown;
+  try { body = await req.json(); } catch { return NextResponse.json({ error: 'invalid_json' }, { status: 400 }); }
+  const parsed = parseCreateInvite(body);
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
 
-    if (error) throw error;
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error("ОШИБКА СУПАБЕЙС (POST):", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    const invite = await createInvite(parsed.value);
+    return NextResponse.json({ slug: invite.slug }, { status: 201 });
+  } catch (error) {
+    console.error('[POST /api/invite]', error);
+    return NextResponse.json({ error: 'db_unavailable' }, { status: 503 });
   }
 }
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const slug = searchParams.get('slug');
+  const slug = new URL(req.url).searchParams.get('slug');
+  if (!slug || !SLUG_RE.test(slug)) return NextResponse.json({ error: 'bad_request' }, { status: 400 });
 
   try {
-    if (slug) {
-      const { data, error } = await supabase
-        .from('invitations')
-        .select('*')
-        .eq('slug', slug)
-        .maybeSingle();
-        
-      if (error) throw error;
-      if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-      
-      return NextResponse.json({
-        slug: data.slug,
-        recipientName: data.recipient_name,
-        question: data.question,
-        message: data.message,
-        answer: data.answer
-      });
-    } else {
-      const { data, error } = await supabase
-        .from('invitations')
-        .select('*')
-        .order('id', { ascending: false });
-        
-      if (error) throw error;
-
-      const formattedData = data.map((item: any) => ({
-        slug: item.slug,
-        recipientName: item.recipient_name,
-        question: item.question,
-        message: item.message,
-        answer: item.answer
-      }));
-
-      return NextResponse.json(formattedData);
-    }
-  } catch (error: any) {
-    console.error("ОШИБКА СУПАБЕЙС (GET):", error.message);
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const invite = await getInvite(slug);
+    if (!invite) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    return NextResponse.json(invite);
+  } catch (error) {
+    console.error('[GET /api/invite]', error);
+    return NextResponse.json({ error: 'db_unavailable' }, { status: 503 });
   }
 }
